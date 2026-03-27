@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registro de Dengue</title>
+
+  <link rel="preconnect" href="https://unpkg.com">
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  />
+
+  <style>
+    * { box-sizing: border-box; }
+
+    :root {
+      --green-900: #14532d;
+      --green-800: #166534;
+      --green-700: #15803d;
+      --green-600: #16a34a;
+      --green-500: #22c55e;
+      --green-50: #f0fdf4;
+      --slate-900: #0f172a;
+      --slate-700: #334155;
+      --slate-500: #64748b;
+      --slate-300: #cbd5e1;
+      --white: #ffffff;
+      --red-600: #dc2626;
+      --red-700: #b91c1c;
+      --amber-50: #fffbeb;
+      --shadow: 0 18px 40px rgba(20, 83, 45, 0.12);
+      --radius: 20px;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #ecfdf5 0%, #f8fafc 100%);
+      color: var(--slate-900);
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--green-900), var(--green-600));
+      color: white;
+      padding: 22px 18px;
+      box-shadow: 0 8px 30px rgba(22, 101, 52, 0.18);
+    }
+
+    .header-inner {
+      max-width: 1320px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      flex-wrap: wrap;
+      text-align: center;
+    }
+
+    .logo-box {
+      width: 74px;
+      height: 74px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.16);
+      border: 2px dashed rgba(255,255,255,0.65);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      backdrop-filter: blur(4px);
+      padding: 6px;
+    }
+
+    .logo-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .header-text h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.7rem, 3vw, 2.4rem);
+    }
+
+    .header-text p {
+      margin: 0;
+      opacity: 0.96;
+      font-size: 1rem;
+    }
+
+    .container {
+      max-width: 1320px;
+      margin: 24px auto;
+      padding: 0 16px 28px;
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 22px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(34, 197, 94, 0.15);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px;
+      backdrop-filter: blur(6px);
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      color: var(--green-800);
+      font-size: 1.25rem;
+    }
+
+    form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 6px;
+      font-size: 14px;
+      color: var(--slate-700);
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 12px 13px;
+      border: 1px solid var(--slate-300);
+      border-radius: 12px;
+      font-size: 14px;
+      transition: border-color .2s ease, box-shadow .2s ease, transform .15s ease;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--green-500);
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+    }
+
+    input[readonly] {
+      background: #f8fafc;
+      color: var(--slate-700);
+    }
+
+    button {
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--green-700), var(--green-500));
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: var(--slate-900);
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+
+    .btn-pdf {
+      background: linear-gradient(135deg, #991b1b, #ef4444);
+      color: white;
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #166534, #22c55e);
+      color: white;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, var(--red-700), var(--red-600));
+      color: white;
+      padding: 8px 10px;
+      font-size: 13px;
+      border-radius: 10px;
+      width: auto;
+      min-width: 82px;
+    }
+
+    #map {
+      width: 100%;
+      height: 520px;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid #d1fae5;
+      min-height: 320px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      grid-column: 1 / -1;
+      flex-wrap: wrap;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .mini-card {
+      background: linear-gradient(135deg, var(--green-50), var(--white));
+      border: 1px solid #bbf7d0;
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .mini-card strong {
+      display: block;
+      font-size: 1.3rem;
+      color: var(--green-800);
+      margin-top: 4px;
+    }
+
+    .status-bar {
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      font-size: 14px;
+      background: var(--amber-50);
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+
+    .status-bar.ok {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 14px;
+      overflow: hidden;
+      border-radius: 14px;
+    }
+
+    th, td {
+      border-bottom: 1px solid #e2e8f0;
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f0fdf4;
+      color: var(--green-900);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tbody tr:hover {
+      background: #f8fafc;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: 420px;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 18px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+      font-size: 14px;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot.red { background: red; }
+    .dot.green { background: green; }
+
+    .help {
+      font-size: 13px;
+      color: var(--slate-500);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: white;
+      white-space: nowrap;
+    }
+
+    .confirmado { background: #dc2626; }
+    .pendiente { background: #16a34a; }
+
+    .leaflet-popup-content {
+      min-width: 240px;
+      line-height: 1.45;
+    }
+
+    .popup-title {
+      color: var(--green-800);
+      font-weight: 700;
+      font-size: 15px;
+      margin-bottom: 6px;
+    }
+
+    @media (max-width: 1100px) {
+      .container { grid-template-columns: 1fr; }
+      #map { height: 460px; }
+    }
+
+    @media (max-width: 760px) {
+      form { grid-template-columns: 1fr; }
+      .summary { grid-template-columns: 1fr; }
+      .card { padding: 16px; }
+      #map { height: 380px; }
+      .actions, .toolbar, .toolbar-buttons { flex-direction: column; }
+      .actions button, .toolbar button, .toolbar-buttons button { width: 100%; }
+      th, td { font-size: 13px; }
+      .header-inner { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="logo-box">
+        <img src="logo.jpeg" alt="Logo" class="logo-img">
+      </div>
+      <div class="header-text">
+        <h1>Registro de Dengue</h1>
+        <p>Sistema de seguimiento para pacientes confirmados y pendientes de confirmación</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <div id="estadoConexion" class="status-bar">
+        Verificando conexión con Google Apps Script...
+      </div>
+
+      <div class="summary">
+        <div class="mini-card">
+          Total de casos
+          <strong id="totalCasos">0</strong>
+        </div>
+        <div class="mini-card">
+          Confirmados
+          <strong id="totalConfirmados">0</strong>
+        </div>
+        <div class="mini-card">
+          Pendientes
+          <strong id="totalPendientes">0</strong>
+        </div>
+      </div>
+
+      <h2>Formulario de Registro</h2>
+      <form id="registroForm">
+        <div>
+          <label for="dni">DNI</label>
+          <input type="text" id="dni" maxlength="8" inputmode="numeric" required placeholder="Ej.: 12345678" />
+        </div>
+
+        <div>
+          <label for="nombre">Nombres y Apellidos</label>
+          <input type="text" id="nombre" required placeholder="Ej.: Juan Pérez Quispe" />
+        </div>
+
+        <div>
+          <label for="fechaNacimiento">Fecha de Nacimiento</label>
+          <input type="date" id="fechaNacimiento" required />
+        </div>
+
+        <div>
+          <label for="edad">Edad</label>
+          <input type="number" id="edad" readonly placeholder="Se calcula automáticamente" />
+        </div>
+
+        <div>
+          <label for="celular">Número de Celular</label>
+          <input type="tel" id="celular" required placeholder="Ej.: 987654321" />
+        </div>
+
+        <div>
+          <label for="estado">Estado del Caso</label>
+          <select id="estado" required>
+            <option value="">Seleccione</option>
+            <option value="confirmado">Confirmado</option>
+            <option value="pendiente">Aún por confirmar</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="fechaSintomas">Fecha de Inicio de Síntomas</label>
+          <input type="date" id="fechaSintomas" required />
+        </div>
+
+        <div>
+          <label for="fechaInvestigacion">Fecha de Investigación</label>
+          <input type="date" id="fechaInvestigacion" required />
+        </div>
+
+        <div>
+          <label for="domicilio">Domicilio</label>
+          <input type="text" id="domicilio" required placeholder="Escriba la dirección completa" />
+        </div>
+
+        <div>
+          <label for="geolocalizacion">Geolocalización</label>
+          <input
+            type="text"
+            id="geolocalizacion"
+            required
+            placeholder='Ej.: 12°14'"'"'41.1"S 76°53'"'"'46.3"W o link de Google Maps'
+          />
+          <div class="help">
+            Ingrese coordenadas GPS o un link de Google Maps.
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn-secondary" id="ubicarBtn">Ubicar en mapa</button>
+          <button type="submit" class="btn-primary" id="guardarBtn">Guardar Registro</button>
+        </div>
+      </form>
+
+      <div class="toolbar">
+        <h2 style="margin:0;">Casos Registrados</h2>
+        <div class="toolbar-buttons">
+          <button type="button" class="btn-warning" id="actualizarPendientesBtn">Actualizar casos pendientes</button>
+          <button type="button" class="btn-pdf" id="descargarPdfBtn">Exportar PDF</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="tablaCasos">
+          <thead>
+            <tr>
+              <th>DNI</th>
+              <th>Paciente</th>
+              <th>Edad</th>
+              <th>Celular</th>
+              <th>Estado</th>
+              <th>Fechas</th>
+              <th>Domicilio / Geolocalización</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <aside class="card">
+      <h2>Mapa de Ubicación</h2>
+      <div id="map"></div>
+      <div class="legend">
+        <span><i class="dot red"></i> Confirmado</span>
+        <span><i class="dot green"></i> Aún por confirmar</span>
+      </div>
+      <p class="help">Puede usar coordenadas como 12°14'41.1"S 76°53'46.3"W o pegar un link de Google Maps.</p>
+    </aside>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.31/dist/jspdf.plugin.autotable.min.js"></script>
+
+  <script>
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxN3JPaw6Uv2ZPMviT9Rue35eOtl0IYOi0N0nN8d65I2m900AIAGMGqK0QK6xaPf2TjMQ/exec';
+
+    const form = document.getElementById('registroForm');
+    const fechaNacimiento = document.getElementById('fechaNacimiento');
+    const edadInput = document.getElementById('edad');
+    const ubicarBtn = document.getElementById('ubicarBtn');
+    const domicilioInput = document.getElementById('domicilio');
+    const geolocalizacionInput = document.getElementById('geolocalizacion');
+    const tbody = document.querySelector('#tablaCasos tbody');
+    const descargarPdfBtn = document.getElementById('descargarPdfBtn');
+    const actualizarPendientesBtn = document.getElementById('actualizarPendientesBtn');
+    const totalCasosEl = document.getElementById('totalCasos');
+    const totalConfirmadosEl = document.getElementById('totalConfirmados');
+    const totalPendientesEl = document.getElementById('totalPendientes');
+    const estadoConexion = document.getElementById('estadoConexion');
+    const guardarBtn = document.getElementById('guardarBtn');
+
+    const map = L.map('map').setView([-12.0464, -77.0428], 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 300);
+
+    let tempMarker = null;
+    let casos = [];
+    let patientMarkers = [];
+
+    function escapeHtml(valor) {
+      return String(valor ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function calcularEdad(fecha) {
+      if (!fecha) return '';
+      const hoy = new Date();
+      const nacimiento = new Date(fecha + 'T00:00:00');
+      let edad = hoy.getFullYear() - nacimiento.getFullYear();
+      const mes = hoy.getMonth() - nacimiento.getMonth();
+      if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
+      return edad >= 0 ? edad : '';
+    }
+
+    function soloNumeros(valor) {
+      return (valor || '').replace(/\D/g, '');
+    }
+
+    function coordenadasValidas(lat, lng) {
+      return !isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+    }
+
+    function dmsToDecimal(grados, minutos, segundos, direccion) {
+      let decimal = Number(grados) + Number(minutos) / 60 + Number(segundos) / 3600;
+      if (direccion === 'S' || direccion === 'W') decimal *= -1;
+      return decimal;
+    }
+
+    function parseDMS(input) {
+      const limpio = input
+        .trim()
+        .toUpperCase()
+        .replace(/”|“/g, '"')
+        .replace(/′/g, "'")
+        .replace(/″/g, '"')
+        .replace(/º/g, '°');
+
+      const regex = /(\d{1,3})°\s*(\d{1,2})'\s*([\d.]+)"\s*([NS])[\s,]+(\d{1,3})°\s*(\d{1,2})'\s*([\d.]+)"\s*([EW])/i;
+      const match = limpio.match(regex);
+
+      if (!match) return null;
+
+      const lat = dmsToDecimal(match[1], match[2], match[3], match[4].toUpperCase());
+      const lng = dmsToDecimal(match[5], match[6], match[7], match[8].toUpperCase());
+
+      if (!coordenadasValidas(lat, lng)) return null;
+
+      return { lat, lng };
+    }
+
+    function parseGoogleMapsLink(input) {
+      const texto = input.trim();
+
+      let match = texto.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+      if (match) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        if (coordenadasValidas(lat, lng)) return { lat, lng };
+      }
+
+      match = texto.match(/q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+      if (match) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        if (coordenadasValidas(lat, lng)) return { lat, lng };
+      }
+
+      match = texto.match(/ll=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+      if (match) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        if (coordenadasValidas(lat, lng)) return { lat, lng };
+      }
+
+      match = texto.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+      if (match) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        if (coordenadasValidas(lat, lng)) return { lat, lng };
+      }
+
+      return null;
+    }
+
+    function obtenerCoordenadasDesdeTexto(texto) {
+      return parseDMS(texto) || parseGoogleMapsLink(texto);
+    }
+
+    function actualizarResumen() {
+      const confirmados = casos.filter(c => c.estado === 'confirmado').length;
+      const pendientes = casos.filter(c => c.estado === 'pendiente').length;
+      totalCasosEl.textContent = casos.length;
+      totalConfirmadosEl.textContent = confirmados;
+      totalPendientesEl.textContent = pendientes;
+    }
+
+    function crearIcono(color) {
+      return L.divIcon({
+        className: '',
+        html: `<div style="width:18px;height:18px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 0 10px rgba(0,0,0,.35);"></div>`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9]
+      });
+    }
+
+    function popupPaciente(caso) {
+      return `
+        <div>
+          <div class="popup-title">${escapeHtml(caso.nombre)}</div>
+          <strong>DNI:</strong> ${escapeHtml(caso.dni)}<br>
+          <strong>Edad:</strong> ${escapeHtml(caso.edad)}<br>
+          <strong>Celular:</strong> ${escapeHtml(caso.celular)}<br>
+          <strong>Estado:</strong> ${caso.estado === 'confirmado' ? 'Confirmado' : 'Aún por confirmar'}<br>
+          <strong>F. nacimiento:</strong> ${escapeHtml(caso.fechaNacimiento)}<br>
+          <strong>Inicio síntomas:</strong> ${escapeHtml(caso.fechaSintomas)}<br>
+          <strong>F. investigación:</strong> ${escapeHtml(caso.fechaInvestigacion)}<br>
+          <strong>Domicilio:</strong> ${escapeHtml(caso.domicilio)}<br>
+          <strong>Geolocalización:</strong> ${escapeHtml(caso.geolocalizacion)}<br>
+          <strong>Latitud:</strong> ${escapeHtml(caso.lat)}<br>
+          <strong>Longitud:</strong> ${escapeHtml(caso.lng)}
+        </div>
+      `;
+    }
+
+    function agregarMarker(caso) {
+      if (!coordenadasValidas(Number(caso.lat), Number(caso.lng))) return;
+
+      const color = caso.estado === 'confirmado' ? 'red' : 'green';
+
+      const marker = L.marker([Number(caso.lat), Number(caso.lng)], {
+        icon: crearIcono(color)
+      }).addTo(map);
+
+      marker.bindPopup(popupPaciente(caso));
+      marker.on('click', function () { this.openPopup(); });
+
+      patientMarkers.push(marker);
+    }
+
+    function limpiarMarkersPacientes() {
+      patientMarkers.forEach(marker => map.removeLayer(marker));
+      patientMarkers = [];
+    }
+
+    function agregarFila(caso) {
+      const tr = document.createElement('tr');
+      tr.dataset.dni = caso.dni;
+      tr.innerHTML = `
+        <td><strong>${escapeHtml(caso.dni)}</strong></td>
+        <td><strong>${escapeHtml(caso.nombre)}</strong></td>
+        <td>${escapeHtml(caso.edad)}</td>
+        <td>${escapeHtml(caso.celular)}</td>
+        <td>
+          <span class="badge ${caso.estado === 'confirmado' ? 'confirmado' : 'pendiente'}">
+            ${caso.estado === 'confirmado' ? 'Confirmado' : 'Aún por confirmar'}
+          </span>
+        </td>
+        <td>
+          Inicio: ${escapeHtml(caso.fechaSintomas)}<br>
+          Investigación: ${escapeHtml(caso.fechaInvestigacion)}
+        </td>
+        <td>
+          ${escapeHtml(caso.domicilio)}<br>
+          <small>${escapeHtml(caso.geolocalizacion)}</small>
+        </td>
+        <td>
+          <button type="button" class="btn-danger" onclick="eliminarCaso('${escapeHtml(caso.dni)}')">Eliminar</button>
+        </td>
+      `;
+      tbody.prepend(tr);
+    }
+
+    function renderizarTabla() {
+      tbody.innerHTML = '';
+      casos.forEach(caso => agregarFila(caso));
+    }
+
+    function renderizarMapa() {
+      limpiarMarkersPacientes();
+      casos.forEach(caso => agregarMarker(caso));
+
+      const puntosValidos = casos
+        .filter(c => coordenadasValidas(Number(c.lat), Number(c.lng)))
+        .map(c => [Number(c.lat), Number(c.lng)]);
+
+      if (puntosValidos.length > 0) {
+        map.fitBounds(puntosValidos, { padding: [30, 30] });
+      }
+    }
+
+    function recargarVistaCompleta() {
+      renderizarTabla();
+      renderizarMapa();
+      actualizarResumen();
+      setTimeout(() => map.invalidateSize(), 100);
+    }
+
+    async function llamarBackend(payload) {
+      const response = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudo conectar con Google Apps Script.');
+      }
+
+      const data = await response.json();
+
+      if (!data.ok) {
+        throw new Error(data.message || 'Respuesta inválida del servidor.');
+      }
+
+      return data;
+    }
+
+    async function verificarConexion() {
+      try {
+        const response = await fetch(APPS_SCRIPT_URL, { method: 'GET' });
+        if (!response.ok) throw new Error();
+        const data = await response.json();
+
+        if (data.ok) {
+          estadoConexion.classList.add('ok');
+          estadoConexion.textContent = 'Conectado correctamente con Google Apps Script.';
+        } else {
+          estadoConexion.textContent = 'La URL respondió, pero no devolvió un estado correcto.';
+        }
+      } catch (error) {
+        estadoConexion.textContent = 'No se pudo verificar la conexión. Revisa la implementación del Apps Script y los permisos.';
+      }
+    }
+
+    async function cargarCasos() {
+      const data = await llamarBackend({ action: 'list' });
+      casos = Array.isArray(data.records) ? data.records : [];
+    }
+
+    async function guardarCaso(caso) {
+      const data = await llamarBackend({
+        action: 'create',
+        record: caso
+      });
+      return data.record;
+    }
+
+    async function eliminarCasoRemoto(dni) {
+      await llamarBackend({
+        action: 'delete',
+        dni: dni
+      });
+    }
+
+    async function actualizarCasoPendienteRemoto(dni) {
+      await llamarBackend({
+        action: 'updateStatus',
+        dni: dni,
+        estado: 'confirmado'
+      });
+    }
+
+    fechaNacimiento.addEventListener('change', () => {
+      edadInput.value = calcularEdad(fechaNacimiento.value);
+    });
+
+    document.getElementById('dni').addEventListener('input', (e) => {
+      e.target.value = soloNumeros(e.target.value).slice(0, 8);
+    });
+
+    ubicarBtn.addEventListener('click', () => {
+      const valorGeo = geolocalizacionInput.value.trim();
+
+      if (!valorGeo) {
+        alert('Ingrese la geolocalización o el link de Google Maps.');
+        return;
+      }
+
+      const coords = obtenerCoordenadasDesdeTexto(valorGeo);
+
+      if (!coords) {
+        alert('Formato no válido. Use coordenadas como 12°14\'41.1"S 76°53\'46.3"W o un link de Google Maps.');
+        return;
+      }
+
+      if (tempMarker) {
+        map.removeLayer(tempMarker);
+      }
+
+      tempMarker = L.marker([coords.lat, coords.lng]).addTo(map)
+        .bindPopup(`
+          <div>
+            <div class="popup-title">Ubicación preliminar</div>
+            <strong>Domicilio:</strong> ${escapeHtml(domicilioInput.value.trim() || 'No especificado')}<br>
+            <strong>Latitud:</strong> ${coords.lat.toFixed(6)}<br>
+            <strong>Longitud:</strong> ${coords.lng.toFixed(6)}
+          </div>
+        `)
+        .openPopup();
+
+      map.setView([coords.lat, coords.lng], 16);
+    });
+
+    function exportarPDF() {
+      if (!casos.length) {
+        alert('No hay registros para exportar en PDF.');
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('landscape', 'mm', 'a4');
+
+      const total = casos.length;
+      const confirmados = casos.filter(c => c.estado === 'confirmado').length;
+      const pendientes = casos.filter(c => c.estado === 'pendiente').length;
+      const fechaReporte = new Date().toLocaleString('es-PE');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text('Registro de Dengue - Reporte General', 14, 15);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`Fecha de generación: ${fechaReporte}`, 14, 22);
+      doc.text(`Total de casos: ${total}`, 14, 28);
+      doc.text(`Confirmados: ${confirmados}`, 70, 28);
+      doc.text(`Pendientes: ${pendientes}`, 120, 28);
+
+      const body = casos.map(caso => [
+        caso.dni,
+        caso.nombre,
+        caso.edad,
+        caso.celular,
+        caso.estado === 'confirmado' ? 'Confirmado' : 'Aún por confirmar',
+        caso.fechaNacimiento,
+        caso.fechaSintomas,
+        caso.fechaInvestigacion,
+        caso.domicilio,
+        caso.geolocalizacion
+      ]);
+
+      doc.autoTable({
+        startY: 35,
+        head: [[
+          'DNI',
+          'Paciente',
+          'Edad',
+          'Celular',
+          'Estado',
+          'F. Nacimiento',
+          'F. Síntomas',
+          'F. Investigación',
+          'Domicilio',
+          'Geolocalización'
+        ]],
+        body: body,
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+          overflow: 'linebreak'
+        },
+        headStyles: {
+          fillColor: [22, 101, 52]
+        },
+        columnStyles: {
+          1: { cellWidth: 35 },
+          8: { cellWidth: 38 },
+          9: { cellWidth: 55 }
+        },
+        margin: { left: 8, right: 8 }
+      });
+
+      doc.save('registro_dengue.pdf');
+    }
+
+    async function actualizarCasoPendiente() {
+      const dni = prompt('Ingrese el DNI del caso pendiente que desea actualizar a confirmado:');
+      if (!dni) return;
+
+      const dniLimpio = soloNumeros(dni).slice(0, 8);
+      const index = casos.findIndex(c => c.dni === dniLimpio && c.estado === 'pendiente');
+
+      if (index === -1) {
+        alert('No se encontró un caso pendiente con ese DNI.');
+        return;
+      }
+
+      try {
+        await actualizarCasoPendienteRemoto(dniLimpio);
+        casos[index].estado = 'confirmado';
+        recargarVistaCompleta();
+        alert('El caso fue actualizado a confirmado correctamente.');
+      } catch (error) {
+        console.error(error);
+        alert(error.message || 'No se pudo actualizar el caso.');
+      }
+    }
+
+    async function eliminarCaso(dni) {
+      const confirmar = confirm('¿Desea eliminar este registro?');
+      if (!confirmar) return;
+
+      try {
+        await eliminarCasoRemoto(dni);
+        casos = casos.filter(c => c.dni !== dni);
+        recargarVistaCompleta();
+        alert('Registro eliminado correctamente.');
+      } catch (error) {
+        console.error(error);
+        alert(error.message || 'No se pudo eliminar el registro.');
+      }
+    }
+
+    window.eliminarCaso = eliminarCaso;
+
+    descargarPdfBtn.addEventListener('click', exportarPDF);
+    actualizarPendientesBtn.addEventListener('click', actualizarCasoPendiente);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const geoTexto = geolocalizacionInput.value.trim();
+      const coords = obtenerCoordenadasDesdeTexto(geoTexto);
+
+      if (!coords) {
+        alert('La geolocalización no es válida. Use coordenadas como 12°14\'41.1"S 76°53\'46.3"W o un link de Google Maps.');
+        return;
+      }
+
+      const caso = {
+        dni: soloNumeros(document.getElementById('dni').value.trim()).slice(0, 8),
+        nombre: document.getElementById('nombre').value.trim(),
+        fechaNacimiento: document.getElementById('fechaNacimiento').value,
+        edad: edadInput.value || calcularEdad(document.getElementById('fechaNacimiento').value),
+        domicilio: domicilioInput.value.trim(),
+        celular: document.getElementById('celular').value.trim(),
+        estado: document.getElementById('estado').value,
+        fechaSintomas: document.getElementById('fechaSintomas').value,
+        fechaInvestigacion: document.getElementById('fechaInvestigacion').value,
+        geolocalizacion: geoTexto,
+        lat: Number(coords.lat).toFixed(6),
+        lng: Number(coords.lng).toFixed(6)
+      };
+
+      if (!/^\d{8}$/.test(caso.dni)) {
+        alert('El DNI debe tener 8 números.');
+        return;
+      }
+
+      if (!caso.nombre || !caso.fechaNacimiento || !caso.celular || !caso.estado || !caso.fechaSintomas || !caso.fechaInvestigacion || !caso.domicilio) {
+        alert('Complete todos los campos obligatorios.');
+        return;
+      }
+
+      if (casos.some(item => item.dni === caso.dni)) {
+        alert('Ya existe un paciente registrado con ese DNI.');
+        return;
+      }
+
+      try {
+        guardarBtn.disabled = true;
+        guardarBtn.textContent = 'Guardando...';
+
+        const casoGuardado = await guardarCaso(caso);
+        casos.push(casoGuardado);
+
+        agregarMarker(casoGuardado);
+        agregarFila(casoGuardado);
+        actualizarResumen();
+
+        if (tempMarker) {
+          map.removeLayer(tempMarker);
+          tempMarker = null;
+        }
+
+        form.reset();
+        edadInput.value = '';
+        alert('Caso registrado correctamente.');
+      } catch (error) {
+        console.error(error);
+        alert(error.message || 'No se pudo guardar el caso.');
+      } finally {
+        guardarBtn.disabled = false;
+        guardarBtn.textContent = 'Guardar Registro';
+      }
+    });
+
+    async function inicializar() {
+      await verificarConexion();
+
+      try {
+        await cargarCasos();
+        recargarVistaCompleta();
+      } catch (error) {
+        console.error(error);
+        alert('No se pudieron cargar los registros. Revisa que tu Apps Script esté implementado como aplicación web y con acceso permitido.');
+      }
+    }
+
+    inicializar();
+  </script>
+</body>
+</html>
