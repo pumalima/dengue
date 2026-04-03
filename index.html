@@ -93,11 +93,11 @@
     }
 
     .container {
-      max-width: 1320px;
+      max-width: 1500px;
       margin: 24px auto;
       padding: 0 16px 28px;
       display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
+      grid-template-columns: 1fr 1.25fr;
       gap: 22px;
     }
 
@@ -200,11 +200,11 @@
 
     #map {
       width: 100%;
-      height: 520px;
+      height: 760px;
       border-radius: 16px;
       overflow: hidden;
       border: 1px solid #d1fae5;
-      min-height: 320px;
+      min-height: 420px;
     }
 
     .actions {
@@ -350,7 +350,7 @@
     .pendiente { background: #16a34a; }
 
     .leaflet-popup-content {
-      min-width: 240px;
+      min-width: 260px;
       line-height: 1.45;
     }
 
@@ -361,16 +361,28 @@
       margin-bottom: 6px;
     }
 
+    .popup-link {
+      display: inline-block;
+      margin-top: 6px;
+      color: #166534;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .popup-link:hover {
+      text-decoration: underline;
+    }
+
     @media (max-width: 1100px) {
       .container { grid-template-columns: 1fr; }
-      #map { height: 460px; }
+      #map { height: 620px; }
     }
 
     @media (max-width: 760px) {
       form { grid-template-columns: 1fr; }
       .summary { grid-template-columns: 1fr; }
       .card { padding: 16px; }
-      #map { height: 380px; }
+      #map { height: 500px; }
       .actions, .toolbar, .toolbar-buttons { flex-direction: column; }
       .actions button, .toolbar button, .toolbar-buttons button { width: 100%; }
       th, td { font-size: 13px; }
@@ -667,7 +679,34 @@
       });
     }
 
+    function obtenerCoordenadasVisibles(caso) {
+      const latNum = Number(caso.lat);
+      const lngNum = Number(caso.lng);
+
+      const repetidos = casos.filter(c =>
+        Number(c.lat) === latNum && Number(c.lng) === lngNum
+      );
+
+      if (repetidos.length <= 1) {
+        return { lat: latNum, lng: lngNum };
+      }
+
+      const index = repetidos.findIndex(c => String(c.dni) === String(caso.dni));
+      const posicion = index >= 0 ? index : 0;
+
+      const radio = 0.00012;
+      const angulo = (Math.PI * 2 * posicion) / repetidos.length;
+
+      return {
+        lat: latNum + radio * Math.cos(angulo),
+        lng: lngNum + radio * Math.sin(angulo)
+      };
+    }
+
     function popupPaciente(caso) {
+      const rutaMaps = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(caso.lat + ',' + caso.lng)}`;
+      const verMaps = `https://www.google.com/maps?q=${encodeURIComponent(caso.lat + ',' + caso.lng)}`;
+
       return `
         <div>
           <div class="popup-title">${escapeHtml(caso.nombre)}</div>
@@ -681,7 +720,15 @@
           <strong>Domicilio:</strong> ${escapeHtml(caso.domicilio)}<br>
           <strong>Geolocalización:</strong> ${escapeHtml(caso.geolocalizacion)}<br>
           <strong>Latitud:</strong> ${escapeHtml(caso.lat)}<br>
-          <strong>Longitud:</strong> ${escapeHtml(caso.lng)}
+          <strong>Longitud:</strong> ${escapeHtml(caso.lng)}<br><br>
+
+          <a class="popup-link" href="${verMaps}" target="_blank" rel="noopener noreferrer">
+            Ver ubicación en Google Maps
+          </a>
+          <br>
+          <a class="popup-link" href="${rutaMaps}" target="_blank" rel="noopener noreferrer">
+            Ir a la casa / Cómo llegar
+          </a>
         </div>
       `;
     }
@@ -690,8 +737,9 @@
       if (!coordenadasValidas(Number(caso.lat), Number(caso.lng))) return;
 
       const color = caso.estado === 'confirmado' ? 'red' : 'green';
+      const coordsVisibles = obtenerCoordenadasVisibles(caso);
 
-      const marker = L.marker([Number(caso.lat), Number(caso.lng)], {
+      const marker = L.marker([coordsVisibles.lat, coordsVisibles.lng], {
         icon: crearIcono(color)
       }).addTo(map);
 
@@ -853,13 +901,23 @@
         map.removeLayer(tempMarker);
       }
 
+      const rutaMapsTemp = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(coords.lat + ',' + coords.lng)}`;
+      const verMapsTemp = `https://www.google.com/maps?q=${encodeURIComponent(coords.lat + ',' + coords.lng)}`;
+
       tempMarker = L.marker([coords.lat, coords.lng]).addTo(map)
         .bindPopup(`
           <div>
             <div class="popup-title">Ubicación preliminar</div>
             <strong>Domicilio:</strong> ${escapeHtml(domicilioInput.value.trim() || 'No especificado')}<br>
             <strong>Latitud:</strong> ${coords.lat.toFixed(6)}<br>
-            <strong>Longitud:</strong> ${coords.lng.toFixed(6)}
+            <strong>Longitud:</strong> ${coords.lng.toFixed(6)}<br><br>
+            <a class="popup-link" href="${verMapsTemp}" target="_blank" rel="noopener noreferrer">
+              Ver en Google Maps
+            </a>
+            <br>
+            <a class="popup-link" href="${rutaMapsTemp}" target="_blank" rel="noopener noreferrer">
+              Ir a la casa / Cómo llegar
+            </a>
           </div>
         `)
         .openPopup();
@@ -1030,9 +1088,7 @@
         const casoGuardado = await guardarCaso(caso);
         casos.push(casoGuardado);
 
-        agregarMarker(casoGuardado);
-        agregarFila(casoGuardado);
-        actualizarResumen();
+        recargarVistaCompleta();
 
         if (tempMarker) {
           map.removeLayer(tempMarker);
