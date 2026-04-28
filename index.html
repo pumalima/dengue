@@ -198,6 +198,21 @@
       min-width: 82px;
     }
 
+    .btn-edit {
+      background: #e2e8f0;
+      color: var(--slate-900);
+      padding: 8px 10px;
+      font-size: 13px;
+      border-radius: 10px;
+      width: auto;
+      min-width: 82px;
+      margin-right: 6px;
+    }
+
+    .btn-edit:hover {
+      background: #cbd5e1;
+    }
+
     #map {
       width: 100%;
       height: 760px;
@@ -390,6 +405,7 @@
     }
   </style>
 </head>
+
 <body>
   <header>
     <div class="header-inner">
@@ -425,6 +441,7 @@
       </div>
 
       <h2>Formulario de Registro</h2>
+
       <form id="registroForm">
         <div>
           <label for="dni">DNI</label>
@@ -481,7 +498,7 @@
             type="text"
             id="geolocalizacion"
             required
-            placeholder='Ej.: 12°14'"'"'41.1"S 76°53'"'"'46.3"W o link de Google Maps'
+            placeholder='Ej.: 12°14&apos;41.1"S 76°53&apos;46.3"W o link de Google Maps'
           />
           <div class="help">
             Ingrese coordenadas GPS o un link de Google Maps.
@@ -491,6 +508,7 @@
         <div class="actions">
           <button type="button" class="btn-secondary" id="ubicarBtn">Ubicar en mapa</button>
           <button type="submit" class="btn-primary" id="guardarBtn">Guardar Registro</button>
+          <button type="button" class="btn-secondary" id="cancelarEdicionBtn" style="display:none;">Cancelar edición</button>
         </div>
       </form>
 
@@ -553,6 +571,7 @@
     const totalPendientesEl = document.getElementById('totalPendientes');
     const estadoConexion = document.getElementById('estadoConexion');
     const guardarBtn = document.getElementById('guardarBtn');
+    const cancelarEdicionBtn = document.getElementById('cancelarEdicionBtn');
 
     const map = L.map('map').setView([-12.0464, -77.0428], 12);
 
@@ -568,6 +587,7 @@
     let tempMarker = null;
     let casos = [];
     let patientMarkers = [];
+    let editandoDni = null;
 
     function escapeHtml(valor) {
       return String(valor ?? '')
@@ -768,6 +788,7 @@
           </span>
         </td>
         <td>
+          Nacimiento: ${escapeHtml(caso.fechaNacimiento)}<br>
           Inicio: ${escapeHtml(caso.fechaSintomas)}<br>
           Investigación: ${escapeHtml(caso.fechaInvestigacion)}
         </td>
@@ -776,6 +797,7 @@
           <small>${escapeHtml(caso.geolocalizacion)}</small>
         </td>
         <td>
+          <button type="button" class="btn-edit" onclick="editarCaso('${escapeHtml(caso.dni)}')">✏️ Editar</button>
           <button type="button" class="btn-danger" onclick="eliminarCaso('${escapeHtml(caso.dni)}')">Eliminar</button>
         </td>
       `;
@@ -856,7 +878,30 @@
         action: 'create',
         record: caso
       });
-      return data.record;
+      return data.record || caso;
+    }
+
+    async function actualizarCasoRemoto(dniOriginal, caso) {
+      try {
+        const data = await llamarBackend({
+          action: 'update',
+          dni: dniOriginal,
+          record: caso
+        });
+        return data.record || caso;
+      } catch (error) {
+        await llamarBackend({
+          action: 'delete',
+          dni: dniOriginal
+        });
+
+        const data = await llamarBackend({
+          action: 'create',
+          record: caso
+        });
+
+        return data.record || caso;
+      }
     }
 
     async function eliminarCasoRemoto(dni) {
@@ -874,6 +919,19 @@
       });
     }
 
+    function cancelarEdicion() {
+      editandoDni = null;
+      form.reset();
+      edadInput.value = '';
+      guardarBtn.textContent = 'Guardar Registro';
+      cancelarEdicionBtn.style.display = 'none';
+
+      if (tempMarker) {
+        map.removeLayer(tempMarker);
+        tempMarker = null;
+      }
+    }
+
     fechaNacimiento.addEventListener('change', () => {
       edadInput.value = calcularEdad(fechaNacimiento.value);
     });
@@ -881,6 +939,8 @@
     document.getElementById('dni').addEventListener('input', (e) => {
       e.target.value = soloNumeros(e.target.value).slice(0, 8);
     });
+
+    cancelarEdicionBtn.addEventListener('click', cancelarEdicion);
 
     ubicarBtn.addEventListener('click', () => {
       const valorGeo = geolocalizacionInput.value.trim();
@@ -1020,13 +1080,46 @@
       }
     }
 
+    function editarCaso(dni) {
+      const caso = casos.find(c => String(c.dni) === String(dni));
+
+      if (!caso) {
+        alert('No se encontró el registro para editar.');
+        return;
+      }
+
+      editandoDni = String(caso.dni);
+
+      document.getElementById('dni').value = caso.dni || '';
+      document.getElementById('nombre').value = caso.nombre || '';
+      document.getElementById('fechaNacimiento').value = caso.fechaNacimiento || '';
+      edadInput.value = caso.edad || calcularEdad(caso.fechaNacimiento);
+      document.getElementById('celular').value = caso.celular || '';
+      document.getElementById('estado').value = caso.estado || '';
+      document.getElementById('fechaSintomas').value = caso.fechaSintomas || '';
+      document.getElementById('fechaInvestigacion').value = caso.fechaInvestigacion || '';
+      domicilioInput.value = caso.domicilio || '';
+      geolocalizacionInput.value = caso.geolocalizacion || '';
+
+      guardarBtn.textContent = 'Actualizar Registro';
+      cancelarEdicionBtn.style.display = 'inline-block';
+
+      document.getElementById('dni').focus();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     async function eliminarCaso(dni) {
       const confirmar = confirm('¿Desea eliminar este registro?');
       if (!confirmar) return;
 
       try {
         await eliminarCasoRemoto(dni);
-        casos = casos.filter(c => c.dni !== dni);
+        casos = casos.filter(c => String(c.dni) !== String(dni));
+
+        if (editandoDni === String(dni)) {
+          cancelarEdicion();
+        }
+
         recargarVistaCompleta();
         alert('Registro eliminado correctamente.');
       } catch (error) {
@@ -1035,6 +1128,7 @@
       }
     }
 
+    window.editarCaso = editarCaso;
     window.eliminarCaso = eliminarCaso;
 
     descargarPdfBtn.addEventListener('click', exportarPDF);
@@ -1076,14 +1170,42 @@
         return;
       }
 
-      if (casos.some(item => item.dni === caso.dni)) {
+      if (!editandoDni && casos.some(item => String(item.dni) === String(caso.dni))) {
         alert('Ya existe un paciente registrado con ese DNI.');
+        return;
+      }
+
+      if (editandoDni && casos.some(item => String(item.dni) === String(caso.dni) && String(item.dni) !== String(editandoDni))) {
+        alert('Ya existe otro paciente registrado con ese DNI.');
         return;
       }
 
       try {
         guardarBtn.disabled = true;
-        guardarBtn.textContent = 'Guardando...';
+        guardarBtn.textContent = editandoDni ? 'Actualizando...' : 'Guardando...';
+
+        if (editandoDni) {
+          const casoActualizado = await actualizarCasoRemoto(editandoDni, caso);
+          const index = casos.findIndex(item => String(item.dni) === String(editandoDni));
+
+          if (index !== -1) {
+            casos[index] = casoActualizado;
+          }
+
+          editandoDni = null;
+          cancelarEdicionBtn.style.display = 'none';
+          recargarVistaCompleta();
+
+          if (tempMarker) {
+            map.removeLayer(tempMarker);
+            tempMarker = null;
+          }
+
+          form.reset();
+          edadInput.value = '';
+          alert('Registro actualizado correctamente.');
+          return;
+        }
 
         const casoGuardado = await guardarCaso(caso);
         casos.push(casoGuardado);
@@ -1100,10 +1222,10 @@
         alert('Caso registrado correctamente.');
       } catch (error) {
         console.error(error);
-        alert(error.message || 'No se pudo guardar el caso.');
+        alert(error.message || 'No se pudo guardar o actualizar el caso.');
       } finally {
         guardarBtn.disabled = false;
-        guardarBtn.textContent = 'Guardar Registro';
+        guardarBtn.textContent = editandoDni ? 'Actualizar Registro' : 'Guardar Registro';
       }
     });
 
